@@ -335,15 +335,8 @@ const showProgress = (current, total) => {
                   ? clc.green("Done")
                   : clc.yellow("Claim daily");
               }
-
-              console.log(
-                `[Account ${
-                  idx + 1
-                }] | Daily mission: ${status_daily} | Coin left: ${clc.yellow(
-                  coinleft
-                )} | Balance: ${clc.green(
-                  current_amounts.toLocaleString("en-US")
-                )}`
+              const levelAccount = account["data"]["levelInfo"]["level"];
+              console.log(`[Account ${  idx + 1}] | Level: ${levelAccount} | Daily mission: ${status_daily} | Coin left: ${clc.yellow(  coinleft)} | Balance: ${clc.green(  current_amounts.toLocaleString("en-US"))}`
               );
 
               return current_amounts;
