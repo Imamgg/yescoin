@@ -1,0 +1,17 @@
+{
+  "name": "yescoin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cli-color": "^2.0.4",
+    "dotenv": "^16.4.5",
+    "figlet": "^1.7.0",
+    "moment": "^2.30.1"
+  }
+}
