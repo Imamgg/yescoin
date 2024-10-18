@@ -11,7 +11,15 @@ const decodeQuery = (query) => {
   return dec;
 };
 
-const makeFetchRequest = async (url, method, token, body = null) => {
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const makeFetchRequest = async (
+  url,
+  method,
+  token,
+  body = null,
+  retries = 3
+) => {
   const headers = {
     accept: "application/json, text/plain, */*",
     "content-type": "application/json",
@@ -19,24 +27,28 @@ const makeFetchRequest = async (url, method, token, body = null) => {
     "user-agent": "Mozilla/5.0",
   };
 
-  const options = {
-    method: method,
-    headers: headers,
-  };
+  const options = { method, headers };
+  if (body) options.body = JSON.stringify(body);
 
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`${response.status} ${response.statusText}`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        if (response.status === 429 && attempt < retries) {
+          const retryAfter = attempt * 1000;
+          console.log(`429 error, retrying in ${retryAfter / 1000} seconds...`);
+          await delay(retryAfter);
+          continue;
+        }
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (err) {
+      if (attempt === retries) {
+        console.error(`Fetch request failed after ${retries} attempts: ${err}`);
+        throw err;
+      }
     }
-    return await response.json();
-  } catch (err) {
-    console.error(`Fetch request failed: ${err}`);
-    throw err;
   }
 };
 
@@ -186,7 +198,6 @@ const runCreateToken = async () => {
   }
 };
 
-
 const countLength = (n) => {
   const num = String(n);
   return num.length;
@@ -217,7 +228,6 @@ const timeCount = async (finish, nanti, waktu) => {
   }
 };
 
-
 // async func to sendmessage to telegram
 const sendMessage = async (total) => {
   const telegram_token = String(process.env.TELEGRAM_TOKEN);
@@ -245,9 +255,7 @@ const sendMessage = async (total) => {
 };
 
 const showHeader = () => {
-  console.log(
-    clc.cyanBright(figlet.textSync("YescoinBot", { font: "Ogre" }))
-  );
+  console.log(clc.cyanBright(figlet.textSync("YescoinBot", { font: "Ogre" })));
   console.log(
     clc.cyanBright("=========================================================")
   );
@@ -275,7 +283,6 @@ const showProgress = (current, total) => {
 };
 
 (async () => {
-  // clear CLI dan tampilkan header
   console.clear();
   showHeader();
 
@@ -291,11 +298,10 @@ const showProgress = (current, total) => {
     let nanti =
       Math.trunc(Date.now() / 1000) + Number(process.env.REFRESH_TOKEN);
 
-    // Progress bar setup
     const tokens = fs
       .readFileSync("tokens.txt", "utf-8")
       .split("\n")
-      .filter(Boolean); // Read the token file
+      .filter(Boolean);
     let totalTokens = tokens.length;
     let currentProgress = 0;
 
@@ -309,44 +315,46 @@ const showProgress = (current, total) => {
       const runall = await Promise.all(
         tokens.map(async (token, idx) => {
           if (token != "") {
-            const account = await getAccountInfo(token);
-            let game_info = await getGameInfo(token);
-            const account_info = await getAccountBuildInfo(token);
-            let current_amounts = account?.data?.currentAmount || 0;
-            let coinleft = Math.round(
-              (game_info?.data?.coinPoolLeftCount || 0) / 10
-            );
+            try {
+              await delay(1000); // 1 detik penundaan antara setiap permintaan
+              const account = await getAccountInfo(token);
+              let game_info = await getGameInfo(token);
+              const account_info = await getAccountBuildInfo(token);
+              let current_amounts = account?.data?.currentAmount || 0;
+              let coinleft = Math.round(
+                (game_info?.data?.coinPoolLeftCount || 0) / 10
+              );
 
-            const daily_mission = await getDailyMission(token);
-            let status_daily = "-";
-            if (daily_mission?.code === 0) {
-              status_daily = daily_mission?.data?.every(
-                (m) => m.missionStatus !== 0
-              )
-                ? clc.green("Done")
-                : clc.yellow("Claim daily");
+              // Menampilkan informasi akun dan misi
+              const daily_mission = await getDailyMission(token);
+              let status_daily = "-";
+              if (daily_mission?.code === 0) {
+                status_daily = daily_mission?.data?.every(
+                  (m) => m.missionStatus !== 0
+                )
+                  ? clc.green("Done")
+                  : clc.yellow("Claim daily");
+              }
+
+              console.log(
+                `[Account ${
+                  idx + 1
+                }] | Daily mission: ${status_daily} | Coin left: ${clc.yellow(
+                  coinleft
+                )} | Balance: ${clc.green(
+                  current_amounts.toLocaleString("en-US")
+                )}`
+              );
+
+              return current_amounts;
+            } catch (err) {
+              console.error(`Error processing token ${idx + 1}:`, err);
+              return 0;
             }
-
-            console.log(
-              `[Account ${
-                idx + 1
-              }] | Daily mission: ${status_daily} | Coin left: ${clc.yellow(
-                coinleft
-              )} | Balance: ${clc.green(
-                current_amounts.toLocaleString("en-US")
-              )}`
-            );
-
-            // Naikkan progress
-            currentProgress++;
-            showProgress(currentProgress, totalTokens);
-
-            return current_amounts;
           }
         })
       );
 
-      // Total balance
       let totalallacc = runall.reduce((acc, val) => acc + (val || 0), 0);
       console.log("\n");
       console.log(
