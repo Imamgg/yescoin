@@ -436,35 +436,30 @@ const showProgress = (current, total) => {
               const special_box = await getSpecialBoxInfo(token);
 
               try {
-                const autoBox = special_box?.data?.autoBox;
-                const recoveryBox = special_box?.data?.recoveryBox;
-
-                if (autoBox) {
-                  const countcoinbox = autoBox.specialBoxTotalCount - 3;
-                  await collectSpecialBoxCoin(
-                    token,
-                    autoBox.boxType,
-                    countcoinbox
-                  );
-                } else if (recoveryBox) {
-                  const countcoinbox = recoveryBox.specialBoxTotalCount - 3;
-                  await collectSpecialBoxCoin(
-                    token,
-                    recoveryBox.boxType,
-                    countcoinbox
-                  );
+                if (special_box["data"]["autoBox"] != null) {
+                  const countcoinbox =
+                    special_box["data"]["autoBox"]["specialBoxTotalCount"] - 3;
+                  const boxtype = special_box["data"]["autoBox"]["boxType"];
+                  await collectSpecialBoxCoin(token, boxtype, countcoinbox);
+                } else if (special_box["data"]["recoveryBox"] != null) {
+                  const countcoinbox =
+                    special_box["data"]["recoveryBox"]["specialBoxTotalCount"] -
+                    3;
+                  const boxtype = special_box["data"]["recoveryBox"]["boxType"];
+                  await collectSpecialBoxCoin(token, boxtype, countcoinbox);
                 } else {
                   await recoverSpecialBox(token);
                 }
               } catch (err) {
                 console.error(err);
               }
+
               let specialrecov_bal = "-";
               try {
-                const specialBoxLeftRecoveryCount =
-                  account_info?.data?.specialBoxLeftRecoveryCount;
-                if (specialBoxLeftRecoveryCount > 0) {
-                  specialrecov_bal = clc.green(specialBoxLeftRecoveryCount);
+                if (account_info["data"]["specialBoxLeftRecoveryCount"] > 0) {
+                  specialrecov_bal = `${clc.green(
+                    account_info["data"]["specialBoxLeftRecoveryCount"]
+                  )}`;
                 } else {
                   specialrecov_bal = 0;
                 }
