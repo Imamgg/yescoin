@@ -325,18 +325,180 @@ const showProgress = (current, total) => {
                 (game_info?.data?.coinPoolLeftCount || 0) / 10
               );
 
-              // Menampilkan informasi akun dan misi
+              // Menampilkan informasi akun dan claim misi harian
               const daily_mission = await getDailyMission(token);
               let status_daily = "-";
+              let count_status_daily = 0;
               if (daily_mission?.code === 0) {
-                status_daily = daily_mission?.data?.every(
-                  (m) => m.missionStatus !== 0
-                )
-                  ? clc.green("Done")
-                  : clc.yellow("Claim daily");
+                for (const mission of daily_mission.data) {
+                  if (mission.missionStatus === 0) {
+                    try {
+                      await finishDailyMission(token, mission.missionId);
+                      await delay(1000); // 1 second delay between each request
+                    } catch (e) {
+                      console.error(
+                        `Error finishing mission ${mission.missionId}:`,
+                        e
+                      );
+                    }
+                  } else {
+                    count_status_daily++;
+                  }
+                }
+                status_daily = clc.yellow("Claim daily");
               }
+              if (count_status_daily > 0) {
+                status_daily = clc.green("Done");
+              }
+              try {
+                await claimBonus(token, 1);
+              } catch (e) {
+                console.error("Error claiming bonus:", e);
+              }
+              // claim stay online
+              await offline(token);
+              // claim tap-tap
+              let status_claim = "-";
+              try {
+                let claim = await collectCoin(
+                  token,
+                  Number(process.env.COINS_PER_CLAIM)
+                );
+                status_claim =
+                  claim.message === "Success"
+                    ? clc.green(claim.message)
+                    : clc.yellow("Waiting");
+              } catch (err) {
+                console.error(
+                  `Error collecting coin for token ${idx + 1}:`,
+                  err
+                );
+                status_claim = clc.red("Error");
+              }
+              // upgrade boost
+              if (["true", "y"].includes(process.env.AUTO_UPGRADE)) {
+                try {
+                  const upgradeCosts = [
+                    account_info["data"]["singleCoinUpgradeCost"],
+                    account_info["data"]["coinPoolRecoveryUpgradeCost"],
+                    account_info["data"]["coinPoolTotalUpgradeCost"],
+                    account_info["data"]["swipeBotUpgradeCost"],
+                  ];
+
+                  if (upgradeCosts.some((cost) => current_amounts > cost)) {
+                    const randchoice = [1, 2, 3, 4];
+                    const idup =
+                      randchoice[Math.floor(Math.random() * randchoice.length)];
+                    await levelUp(token, idup);
+                  }
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+              // upgrade user (task)
+              if (["true", "y"].includes(process.env.AUTO_TASKS)) {
+                try {
+                  const upgradeuser_task = await getUserUpgradeTaskList(token);
+                  if (upgradeuser_task.code === 0) {
+                    for (const task of upgradeuser_task.data
+                      .taskBonusBaseResponseList) {
+                      if (task.taskStatus === 0) {
+                        const taskid = task.taskId;
+                        await finishUserUpgradeTask(token, taskid);
+                        await delay(1000); // 1 second delay between each request
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.error("Error finishing user upgrade task:", err);
+                }
+              }
+              // sosial/common (task)
+              if (["true", "y"].includes(process.env.AUTO_TASKS)) {
+                try {
+                  await claimBonus(token, 2);
+                } catch (e) {
+                  console.error(e);
+                }
+                const list_task = await getTaskList(token);
+                if (list_task.code === 0) {
+                  for (const task of list_task.data) {
+                    if (task.taskStatus === 0) {
+                      const idtask = task.taskId;
+                      await claimTask(token, idtask);
+                      await delay(1000); // 1 second delay between each request
+                    }
+                  }
+                }
+              }
+              // special box (SB)
+              await specialBoxReloadPage(token);
+              const special_box = await getSpecialBoxInfo(token);
+
+              try {
+                const autoBox = special_box?.data?.autoBox;
+                const recoveryBox = special_box?.data?.recoveryBox;
+
+                if (autoBox) {
+                  const countcoinbox = autoBox.specialBoxTotalCount - 3;
+                  await collectSpecialBoxCoin(
+                    token,
+                    autoBox.boxType,
+                    countcoinbox
+                  );
+                } else if (recoveryBox) {
+                  const countcoinbox = recoveryBox.specialBoxTotalCount - 3;
+                  await collectSpecialBoxCoin(
+                    token,
+                    recoveryBox.boxType,
+                    countcoinbox
+                  );
+                } else {
+                  await recoverSpecialBox(token);
+                }
+              } catch (err) {
+                console.error(err);
+              }
+              let specialrecov_bal = "-";
+              try {
+                const specialBoxLeftRecoveryCount =
+                  account_info?.data?.specialBoxLeftRecoveryCount;
+                if (specialBoxLeftRecoveryCount > 0) {
+                  specialrecov_bal = clc.green(specialBoxLeftRecoveryCount);
+                } else {
+                  specialrecov_bal = 0;
+                }
+              } catch (err) {
+                console.error(err);
+              }
+              // recover full box
+              let recovery_bal = "-";
+              try {
+                const coinPoolLeftRecoveryCount =
+                  account_info?.data?.coinPoolLeftRecoveryCount || 0;
+                if (coinPoolLeftRecoveryCount > 0 && coinleft < 300) {
+                  await recoverCoinPool(token);
+                  game_info = await getGameInfo(token);
+                  await collectCoin(token, process.env.COINS_PER_CLAIM);
+                }
+
+                recovery_bal =
+                  coinPoolLeftRecoveryCount > 0
+                    ? clc.green(coinPoolLeftRecoveryCount)
+                    : "0";
+              } catch (err) {
+                console.error(err);
+              }
+              await shareJourney(token)
               const levelAccount = account["data"]["levelInfo"]["level"];
-              console.log(`[Account ${  idx + 1}] | Level: ${levelAccount} | Daily mission: ${status_daily} | Coin left: ${clc.yellow(  coinleft)} | Balance: ${clc.green(  current_amounts.toLocaleString("en-US"))}`
+              console.log(
+                `[Account ${
+                  idx + 1
+                }] | Level: ${levelAccount} | Daily mission: ${status_daily} | Coin left: ${clc.yellow(
+                  coinleft
+                )} | Balance: ${clc.green(
+                  current_amounts.toLocaleString("en-US")
+                )} | SB : ${specialrecov_bal} | FB : ${recovery_bal} | Status : ${status_claim}`
               );
 
               return current_amounts;
