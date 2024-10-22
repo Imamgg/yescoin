@@ -469,22 +469,26 @@ const showProgress = (current, total) => {
               // recover full box
               let recovery_bal = "-";
               try {
-                const coinPoolLeftRecoveryCount =
-                  account_info?.data?.coinPoolLeftRecoveryCount || 0;
-                if (coinPoolLeftRecoveryCount > 0 && coinleft < 300) {
+                if (
+                  account_info["data"]["coinPoolLeftRecoveryCount"] > 0 &&
+                  coinleft < 300
+                ) {
                   await recoverCoinPool(token);
                   game_info = await getGameInfo(token);
-                  await collectCoin(token, process.env.COINS_PER_CLAIM);
+                  claim = await collectCoin(token, process.env.COINS_PER_CLAIM);
                 }
 
-                recovery_bal =
-                  coinPoolLeftRecoveryCount > 0
-                    ? clc.green(coinPoolLeftRecoveryCount)
-                    : "0";
+                if (account_info["data"]["coinPoolLeftRecoveryCount"] > 0) {
+                  recovery_bal = `${clc.green(
+                    account_info["data"]["coinPoolLeftRecoveryCount"]
+                  )}`;
+                } else {
+                  recovery_bal = 0;
+                }
               } catch (err) {
                 console.error(err);
               }
-              await shareJourney(token)
+              await shareJourney(token);
               const levelAccount = account["data"]["levelInfo"]["level"];
               console.log(
                 `[Account ${
