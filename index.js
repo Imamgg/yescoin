@@ -255,31 +255,29 @@ const sendMessage = async (total) => {
 };
 
 const showHeader = () => {
-  console.log(clc.cyanBright(figlet.textSync("YescoinBot", { font: "Ogre" })));
+  console.log(clc.cyanBright(figlet.textSync("YescoinBot", { font: "Slant" })));
+  console.log(clc.cyanBright("💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠"));
   console.log(
-    clc.cyanBright("=========================================================")
+    clc.greenBright(`📅 Start Time: ${moment().format("YYYY-MM-DD HH:mm:ss")}`)
   );
   console.log(
-    clc.greenBright(`Start Time: ${moment().format("YYYY-MM-DD HH:mm:ss")}`)
-  );
-  console.log(
-    clc.cyanBright(
-      "=========================================================\n"
-    )
+    clc.cyanBright("💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠💠\n")
   );
 };
 
 const showStatus = (label, status) => {
-  const statusText = status ? clc.green("Success") : clc.red("Failed");
+  const statusText = status
+    ? `${clc.bgGreen("✔️ Success")}`
+    : `${clc.bgRed("❌ Failed")}`;
   console.log(`${label}: ${statusText}`);
 };
 
 const showProgress = (current, total) => {
-  const progress = Math.round((current / total) * 20); // progress in 20 steps
-  const bar = `[${"=".repeat(progress)}${" ".repeat(
-    20 - progress
-  )}] ${current}/${total}`;
-  process.stdout.write(`Progress: ${clc.yellow(bar)}\r`);
+  const progress = Math.round((current / total) * 10);
+  const bar = `${clc.blue("🟦".repeat(progress))}${clc.blackBright(
+    "⬜".repeat(10 - progress)
+  )}`;
+  process.stdout.write(`Progress: ${bar} ${current}/${total}\r`);
 };
 
 (async () => {
@@ -491,13 +489,37 @@ const showProgress = (current, total) => {
               await shareJourney(token);
               const levelAccount = account["data"]["levelInfo"]["level"];
               console.log(
-                `[Account ${
-                  idx + 1
-                }] | Level: ${levelAccount} | Daily mission: ${status_daily} | Coin left: ${clc.yellow(
-                  coinleft
-                )} | Balance: ${clc.green(
+                clc.cyanBright(
+                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                )
+              );
+              console.log(clc.magentaBright(`🆔 Account ${idx + 1}`));
+              console.log(
+                clc.cyanBright(
+                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                )
+              );
+              console.log(
+                `🏅 ${clc.bold("Level:")} ${clc.yellowBright(levelAccount)}`
+              );
+              console.log(`📋 ${clc.bold("Daily Mission:")} ${status_daily}`);
+              console.log(
+                `💰 ${clc.bold("Coin Left:")} ${clc.blueBright(coinleft)}`
+              );
+              console.log(
+                `💵 ${clc.bold("Balance:")} ${clc.greenBright(
                   current_amounts.toLocaleString("en-US")
-                )} | SB : ${specialrecov_bal} | FB : ${recovery_bal} | Status : ${status_claim}`
+                )}`
+              );
+              console.log(
+                `🎁 ${clc.bold("Special Box (SB):")} ${specialrecov_bal}`
+              );
+              console.log(`🔄 ${clc.bold("Full Box (FB):")} ${recovery_bal}`);
+              console.log(`🔍 ${clc.bold("Status:")} ${status_claim}`);
+              console.log(
+                clc.cyanBright(
+                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                )
               );
 
               return current_amounts;
